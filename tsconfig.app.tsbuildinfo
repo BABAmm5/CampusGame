@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/components/statcard.tsx","./src/game/battleengine.ts","./src/game/config.ts","./src/game/configcodec.ts","./src/game/economyengine.ts","./src/game/initgame.ts","./src/game/roundengine.ts","./src/game/types.ts","./src/game/victoryengine.ts"],"version":"5.9.3"}
