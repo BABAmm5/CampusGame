@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c4e59447-e8cf-474d-b765-99a21de315a6" name="Changes" comment="" />
+    <list default="true" id="c4e59447-e8cf-474d-b765-99a21de315a6" name="Changes" comment="fix(build): 修复资源路径并升级 TypeScript 版本&#10;&#10;- 修改 index.html 中资源路径为 /CampusGame/ 目录下&#10;- 更新 vite.config.ts，设置 base 为 /CampusGame/&#10;- 将 package.json 和 package-lock.json 中 TypeScript 版本升级到 5.9.3&#10;- 清理 vite.config.ts 结尾多余空行与逗号规范问题" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -12,6 +12,9 @@
   </component>
   <component name="ComposerSettings">
     <execution />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
@@ -35,6 +38,7 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
+    "ts.external.directory.path": "/Users/caiguoqi/Desktop/ai_game/node_modules/typescript/lib",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -46,11 +50,42 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1776245130326</updated>
-      <workItem from="1776245133517" duration="2341000" />
+      <workItem from="1776245133517" duration="6970000" />
     </task>
+    <task id="LOCAL-00001" summary="delete">
+      <option name="closed" value="true" />
+      <created>1776251700264</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1776251700264</updated>
+    </task>
+    <task id="LOCAL-00002" summary="style(build): 修复 vite 配置文件中的多余空行&#10;&#10;- 在 vite.config.ts 文件末尾添加了缺失的换行符&#10;- 保持代码格式的一致性&#10;- 遵循 ESLint 和代码风格规范要求&#10;- 提高配置文件的可读性和规范性">
+      <option name="closed" value="true" />
+      <created>1776253107956</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1776253107956</updated>
+    </task>
+    <task id="LOCAL-00003" summary="fix(build): 修复资源路径并升级 TypeScript 版本&#10;&#10;- 修改 index.html 中资源路径为 /CampusGame/ 目录下&#10;- 更新 vite.config.ts，设置 base 为 /CampusGame/&#10;- 将 package.json 和 package-lock.json 中 TypeScript 版本升级到 5.9.3&#10;- 清理 vite.config.ts 结尾多余空行与逗号规范问题">
+      <option name="closed" value="true" />
+      <created>1776255127224</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1776255127224</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="delete" />
+    <MESSAGE value="style(build): 修复 vite 配置文件中的多余空行&#10;&#10;- 在 vite.config.ts 文件末尾添加了缺失的换行符&#10;- 保持代码格式的一致性&#10;- 遵循 ESLint 和代码风格规范要求&#10;- 提高配置文件的可读性和规范性" />
+    <MESSAGE value="fix(build): 修复资源路径并升级 TypeScript 版本&#10;&#10;- 修改 index.html 中资源路径为 /CampusGame/ 目录下&#10;- 更新 vite.config.ts，设置 base 为 /CampusGame/&#10;- 将 package.json 和 package-lock.json 中 TypeScript 版本升级到 5.9.3&#10;- 清理 vite.config.ts 结尾多余空行与逗号规范问题" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix(build): 修复资源路径并升级 TypeScript 版本&#10;&#10;- 修改 index.html 中资源路径为 /CampusGame/ 目录下&#10;- 更新 vite.config.ts，设置 base 为 /CampusGame/&#10;- 将 package.json 和 package-lock.json 中 TypeScript 版本升级到 5.9.3&#10;- 清理 vite.config.ts 结尾多余空行与逗号规范问题" />
   </component>
 </project>
