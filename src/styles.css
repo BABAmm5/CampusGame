@@ -5,8 +5,9 @@
 :root {
   color: #111827;
   background:
-    radial-gradient(circle at top, rgba(196, 109, 45, 0.16), transparent 38%),
-    linear-gradient(180deg, #f9f4eb 0%, #efe3d1 100%);
+    radial-gradient(circle at top left, rgba(196, 109, 45, 0.22), transparent 30%),
+    radial-gradient(circle at 85% 15%, rgba(54, 91, 67, 0.16), transparent 24%),
+    linear-gradient(180deg, #fbf7f0 0%, #efe3d1 52%, #e7d8c1 100%);
   font-family: "Trebuchet MS", Verdana, sans-serif;
 }
 
@@ -18,6 +19,16 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  color: #111827;
+  background: transparent;
+  font-family: "Trebuchet MS", Verdana, sans-serif;
+}
+
+#root {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0)),
+    radial-gradient(circle at center top, rgba(255, 255, 255, 0.55), transparent 35%);
 }
 
 button,
