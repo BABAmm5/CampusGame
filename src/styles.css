@@ -3,11 +3,12 @@
 @tailwind utilities;
 
 :root {
-  color: #111827;
+  color: #fff7df;
   background:
-    radial-gradient(circle at top left, rgba(196, 109, 45, 0.22), transparent 30%),
-    radial-gradient(circle at 85% 15%, rgba(54, 91, 67, 0.16), transparent 24%),
-    linear-gradient(180deg, #fbf7f0 0%, #efe3d1 52%, #e7d8c1 100%);
+    radial-gradient(circle at center 18%, rgba(59, 121, 78, 0.32), transparent 34%),
+    radial-gradient(circle at 16% 18%, rgba(184, 130, 61, 0.22), transparent 28%),
+    radial-gradient(circle at 88% 82%, rgba(111, 47, 53, 0.2), transparent 26%),
+    linear-gradient(135deg, #17110d 0%, #372011 44%, #130f0d 100%);
   font-family: "Trebuchet MS", Verdana, sans-serif;
 }
 
@@ -19,7 +20,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  color: #111827;
+  color: #fff7df;
   background: transparent;
   font-family: "Trebuchet MS", Verdana, sans-serif;
 }
@@ -27,12 +28,23 @@ body {
 #root {
   min-height: 100vh;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0)),
-    radial-gradient(circle at center top, rgba(255, 255, 255, 0.55), transparent 35%);
+    linear-gradient(90deg, rgba(255, 247, 223, 0.04) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 247, 223, 0.035) 1px, transparent 1px),
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 42%);
+  background-size: 34px 34px, 34px 34px, auto;
 }
 
 button,
 input,
 select {
   font: inherit;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
 }

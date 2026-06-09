@@ -74,6 +74,17 @@ const ruleSections: Array<{
   },
 ];
 
+const tableSeats: Array<{
+  id: FactionId;
+  label: string;
+  className: string;
+}> = [
+  { id: 1, label: "北席", className: "left-1/2 top-2 w-[56%] -translate-x-1/2 sm:w-[32%]" },
+  { id: 2, label: "东席", className: "right-2 top-1/2 w-[34%] -translate-y-1/2 sm:w-[24%]" },
+  { id: 3, label: "南席", className: "bottom-2 left-1/2 w-[56%] -translate-x-1/2 sm:w-[32%]" },
+  { id: 4, label: "西席", className: "left-2 top-1/2 w-[34%] -translate-y-1/2 sm:w-[24%]" },
+];
+
 function readSave(): PersistedData | null {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -107,8 +118,8 @@ function App() {
   const [configCodeInput, setConfigCodeInput] = useState("");
   const [configFeedback, setConfigFeedback] = useState("");
   const [showRules, setShowRules] = useState(false);
-  const [showFactions, setShowFactions] = useState(true);
-  const [showLogs, setShowLogs] = useState(true);
+  const [showFactions, setShowFactions] = useState(false);
+  const [showLogs, setShowLogs] = useState(false);
 
   const updateRuleValue = (
     sectionKey: keyof RuleConfig,
@@ -159,8 +170,8 @@ function App() {
     setRuleConfig(nextRuleConfig);
     setGameState(state);
     setScreen("game");
-    setShowFactions(true);
-    setShowLogs(true);
+    setShowFactions(false);
+    setShowLogs(false);
     setBattleTargetId(
       nextFactionCount > 1 ? (state.factions[1].id as FactionId) : state.factions[0].id,
     );
@@ -287,41 +298,51 @@ function App() {
   const aliveTargets = gameState?.factions.filter(
     (faction) => faction.alive && faction.id !== activeFaction?.id,
   );
+  const winnerFaction = gameState?.winnerId
+    ? gameState.factions.find((faction) => faction.id === gameState.winnerId)
+    : null;
+  const latestLogs = gameState ? [...gameState.logs].reverse() : [];
 
   return (
-    <div className="min-h-screen bg-transparent text-ink">
-      <main className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 py-6">
+    <div className="min-h-screen bg-transparent text-amber-50">
+      <main
+        className={`mx-auto flex w-full max-w-6xl flex-col ${
+          screen === "game"
+            ? "h-dvh overflow-hidden px-2 py-2 sm:px-4"
+            : "min-h-screen px-4 py-5 sm:px-6 lg:px-8"
+        }`}
+      >
         {screen === "home" && (
-          <section className="flex flex-1 flex-col justify-between rounded-[2rem] bg-white/85 p-6 shadow-panel">
+          <section className="mx-auto flex w-full max-w-md flex-1 flex-col justify-between rounded-[2rem] border border-amber-200/25 bg-[linear-gradient(145deg,rgba(66,31,14,0.94),rgba(25,21,18,0.96))] p-6 shadow-panel">
             <div className="space-y-5">
-              <p className="text-sm uppercase tracking-[0.35em] text-accent">Mobile H5 Prototype</p>
-              <h1 className="font-display text-5xl leading-none">King Game</h1>
-              <p className="text-base leading-7 text-steel">
-                本地热座回合制策略原型。支持自动存档、继续游戏、配置码导入导出，打包后可直接部署到 Gitee Pages 或 GitHub Pages。
+              <p className="text-sm uppercase tracking-[0.35em] text-amber-300">Tabletop H5</p>
+              <h1 className="font-display text-5xl leading-none text-amber-50">King Game</h1>
+              <p className="text-base leading-7 text-amber-100/80">
+                四阵营本地热座回合制桌牌原型。牌位围绕中庭桌台展开，支持自动存档、继续游戏、配置码导入导出。
               </p>
             </div>
             <div className="space-y-3">
               {gameState && (
                 <button
-                  className="w-full rounded-2xl border border-ink px-5 py-4 text-base font-semibold"
+                  className="w-full rounded-2xl border border-amber-200/40 bg-amber-50/10 px-5 py-4 text-base font-semibold text-amber-50"
                   onClick={continueGame}
                 >
                   继续游戏
                 </button>
               )}
               <button
-                className="w-full rounded-2xl bg-ink px-5 py-4 text-base font-semibold text-white"
+                className="w-full rounded-2xl bg-amber-300 px-5 py-4 text-base font-semibold text-stone-950 shadow-sm"
                 onClick={() => setScreen("setup")}
               >
                 开始新棋局
               </button>
               <button
-                className="w-full rounded-2xl bg-sand px-5 py-4 text-base font-semibold"
+                className="w-full rounded-2xl bg-amber-50/12 px-5 py-4 text-base font-semibold text-amber-50"
                 onClick={() => setShowRules(true)}
               >
                 查看规则
               </button>
-              <div className="rounded-2xl bg-sand p-4 text-sm leading-6 text-steel">
+              <div className="rounded-2xl border border-amber-200/20 bg-black/20 p-4 text-sm leading-6 text-amber-100/80">
                 当前默认规则：每轮增员 {ruleConfig.economy.reinforcementPerTurn}，民产金 {ruleConfig.economy.civilianGoldOutput}，兵耗金 {ruleConfig.economy.soldierUpkeep}。开局阵营名已固定为统治者、反抗者、守护者、入侵者。
               </div>
             </div>
@@ -329,16 +350,16 @@ function App() {
         )}
 
         {screen === "setup" && (
-          <section className="flex flex-1 flex-col gap-5 rounded-[2rem] bg-white/85 p-6 shadow-panel">
+          <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 rounded-[2rem] border border-amber-200/25 bg-[linear-gradient(145deg,rgba(248,228,177,0.96),rgba(187,137,69,0.92))] p-6 text-stone-950 shadow-panel">
             <div>
-              <p className="text-sm uppercase tracking-[0.35em] text-accent">Setup</p>
+              <p className="text-sm uppercase tracking-[0.35em] text-stone-700">Setup</p>
               <h2 className="mt-2 font-display text-4xl">开局设置</h2>
-              <p className="mt-3 text-sm leading-6 text-steel">选择阵营数量，调整规则，或导入配置码后开始新局。</p>
+              <p className="mt-3 text-sm leading-6 text-stone-700">选择阵营数量，调整规则，或导入配置码后开始新局。</p>
             </div>
             <label className="space-y-3">
               <span className="text-sm font-semibold">阵营数量</span>
               <select
-                className="w-full rounded-2xl border border-stone-200 bg-sand px-4 py-4"
+                className="w-full rounded-2xl border border-amber-950/20 bg-amber-50/80 px-4 py-4"
                 value={factionCount}
                 onChange={(event) => setFactionCount(Number(event.target.value))}
               >
@@ -349,11 +370,11 @@ function App() {
                 ))}
               </select>
             </label>
-            <section className="rounded-3xl bg-sand p-4">
+            <section className="rounded-3xl border border-amber-950/10 bg-amber-50/55 p-4">
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="font-semibold">通用规则编辑</h3>
                 <button
-                  className="text-sm font-semibold text-accent"
+                  className="text-sm font-semibold text-stone-800"
                   onClick={() => {
                     setRuleConfig(DEFAULT_RULE_CONFIG);
                     setConfigFeedback("规则已恢复默认值。");
@@ -364,19 +385,19 @@ function App() {
               </div>
               <div className="space-y-4">
                 {ruleSections.map((section) => (
-                  <div key={section.title} className="rounded-2xl bg-white/70 p-3">
+                  <div key={section.title} className="rounded-2xl border border-amber-950/10 bg-white/60 p-3">
                     <h4 className="mb-3 font-semibold">{section.title}</h4>
                     {section.key === "initialFactionStats" && (
-                      <p className="mb-3 text-sm leading-6 text-steel">
+                      <p className="mb-3 text-sm leading-6 text-stone-700">
                         这里是通用备用初始值。当前开局会优先使用四个固定阵营的专属初始属性：统治者、反抗者、守护者、入侵者。
                       </p>
                     )}
                     <div className="grid grid-cols-2 gap-3">
                       {section.fields.map((field) => (
                         <label key={field.key} className="space-y-2 text-sm">
-                          <span className="block text-steel">{field.label}</span>
+                          <span className="block text-stone-700">{field.label}</span>
                           <input
-                            className="w-full rounded-2xl border border-stone-200 bg-white px-3 py-3"
+                            className="w-full rounded-2xl border border-amber-950/15 bg-white/85 px-3 py-3"
                             type="number"
                             min={field.min ?? 0}
                             step={field.step ?? 1}
@@ -392,28 +413,28 @@ function App() {
                 ))}
               </div>
             </section>
-            <section className="rounded-3xl bg-sand p-4">
+            <section className="rounded-3xl border border-amber-950/10 bg-amber-50/55 p-4">
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="font-semibold">配置码</h3>
-                <button className="text-sm font-semibold text-accent" onClick={handleExportConfig}>
+                <button className="text-sm font-semibold text-stone-800" onClick={handleExportConfig}>
                   导出当前配置
                 </button>
               </div>
               <textarea
-                className="min-h-32 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm leading-6"
+                className="min-h-32 w-full rounded-2xl border border-amber-950/15 bg-white/85 px-4 py-3 text-sm leading-6"
                 placeholder="粘贴配置码后点击导入"
                 value={configCodeInput}
                 onChange={(event) => setConfigCodeInput(event.target.value)}
               />
               <div className="mt-3 flex gap-3">
                 <button
-                  className="flex-1 rounded-2xl border border-stone-300 px-4 py-3 font-semibold"
+                  className="flex-1 rounded-2xl border border-amber-950/20 bg-white/35 px-4 py-3 font-semibold"
                   onClick={handleImportConfig}
                 >
                   导入配置
                 </button>
                 <button
-                  className="flex-1 rounded-2xl border border-stone-300 px-4 py-3 font-semibold"
+                  className="flex-1 rounded-2xl border border-amber-950/20 bg-white/35 px-4 py-3 font-semibold"
                   onClick={() => {
                     setRuleConfig(DEFAULT_RULE_CONFIG);
                     setFactionCount(initialFactionCount);
@@ -424,17 +445,17 @@ function App() {
                   恢复默认
                 </button>
               </div>
-              {configFeedback && <p className="mt-3 text-sm text-steel">{configFeedback}</p>}
+              {configFeedback && <p className="mt-3 text-sm text-stone-700">{configFeedback}</p>}
             </section>
             <div className="mt-auto flex gap-3">
               <button
-                className="flex-1 rounded-2xl border border-stone-300 px-4 py-4 font-semibold"
+                className="flex-1 rounded-2xl border border-amber-950/20 bg-white/35 px-4 py-4 font-semibold"
                 onClick={() => setScreen("home")}
               >
                 返回首页
               </button>
               <button
-                className="flex-1 rounded-2xl bg-accent px-4 py-4 font-semibold text-white"
+                className="flex-1 rounded-2xl bg-stone-950 px-4 py-4 font-semibold text-amber-50"
                 onClick={() => startGame()}
               >
                 进入游戏
@@ -444,102 +465,92 @@ function App() {
         )}
 
         {screen === "game" && gameState && activeFaction && (
-          <section className="space-y-5 pb-8">
-            <header className="relative overflow-hidden rounded-[2rem] bg-ink p-5 text-white shadow-panel ring-1 ring-white/10">
-              <div className="pointer-events-none absolute inset-0">
-                <div className="absolute -right-12 -top-10 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
-                <div className="absolute bottom-0 left-0 h-24 w-24 rounded-full bg-accent/20 blur-2xl" />
-              </div>
-              <div className="relative mt-2 space-y-4">
-                <p className="text-xs uppercase tracking-[0.35em] text-white/60">Round</p>
-                <div>
-                  <h2 className="font-display text-4xl">第 {gameState.round} 轮</h2>
-                  <p className="mt-2 text-sm text-white/75">当前行动阵营：{activeFaction.name}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-3 rounded-[1.5rem] border border-white/10 bg-white/10 p-3 backdrop-blur-sm">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-white/55">状态</p>
-                    <p className="mt-1 text-sm font-semibold">
-                      {activeFaction.reinforcementPending ? "等待分配新增单位" : "本回合可结束"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-white/55">现役兵力</p>
-                    <p className="mt-1 text-sm font-semibold">
-                      {activeFaction.soldiers} 兵 / {activeFaction.civilians} 民
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {gameState.winnerId && (
-                    <span className="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold">
-                      获胜：{gameState.factions.find((faction) => faction.id === gameState.winnerId)?.name}
-                    </span>
-                  )}
-                  <button
-                    className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink"
-                    onClick={restartGame}
-                  >
-                    重开一局
-                  </button>
-                  <button
-                    className="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white"
-                    onClick={resetToHome}
-                  >
-                    返回首页
-                  </button>
-                  <button
-                    className="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white"
-                    onClick={() => setShowRules(true)}
-                  >
-                    规则说明
-                  </button>
-                </div>
-              </div>
-            </header>
-
-            <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/90 shadow-panel backdrop-blur">
-              <div className="border-b border-stone-200/80 bg-[linear-gradient(135deg,rgba(196,109,45,0.14),rgba(54,91,67,0.08))] px-4 py-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-accent/80">Command</p>
-                    <h3 className="mt-1 font-display text-2xl text-ink">操作面板</h3>
-                  </div>
-                  <span className="rounded-full border border-white/70 bg-white/80 px-3 py-1 text-xs font-semibold text-steel shadow-sm">
-                    {activeFaction.reinforcementPending ? "待分配增员" : "可结束回合"}
+          <section className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
+            <header className="flex shrink-0 items-center justify-between gap-2 rounded-2xl border border-amber-200/20 bg-black/40 px-3 py-2 shadow-panel backdrop-blur">
+              <div className="min-w-0">
+                <p className="text-[0.62rem] uppercase tracking-[0.22em] text-amber-300/75">King Game Table</p>
+                <div className="mt-0.5 flex items-center gap-2">
+                  <h2 className="whitespace-nowrap font-display text-2xl leading-none text-amber-50">
+                    第 {gameState.round} 轮
+                  </h2>
+                  <span className="truncate rounded-full border border-amber-200/20 bg-amber-50/10 px-2 py-1 text-xs font-semibold text-amber-100">
+                    {activeFaction.name}
                   </span>
                 </div>
               </div>
+              <div className="flex shrink-0 gap-1.5">
+                {winnerFaction && (
+                  <span className="rounded-full border border-amber-200/30 bg-amber-300 px-2.5 py-1.5 text-xs font-semibold text-stone-950">
+                    获胜：{winnerFaction.name}
+                  </span>
+                )}
+                <button
+                  className="rounded-full border border-amber-200/30 bg-amber-50/10 px-2.5 py-1.5 text-xs font-semibold text-amber-50"
+                  onClick={restartGame}
+                >
+                  重开
+                </button>
+                <button
+                  className="rounded-full border border-amber-200/30 bg-amber-50/10 px-2.5 py-1.5 text-xs font-semibold text-amber-50"
+                  onClick={resetToHome}
+                >
+                  首页
+                </button>
+                <button
+                  className="rounded-full border border-amber-200/30 bg-amber-50/10 px-2.5 py-1.5 text-xs font-semibold text-amber-50"
+                  onClick={() => setShowRules(true)}
+                >
+                  规则
+                </button>
+              </div>
+            </header>
 
-              <div className="space-y-4 p-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <article className="rounded-[1.5rem] bg-sand/90 p-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-steel">金币储备</p>
-                    <p className="mt-2 font-display text-3xl text-ink">{activeFaction.gold}</p>
-                  </article>
-                  <article className="rounded-[1.5rem] bg-sand/90 p-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-steel">军备等级</p>
-                    <p className="mt-2 font-display text-3xl text-ink">
-                      武 {activeFaction.weaponLevel} / 甲 {activeFaction.armor}
-                    </p>
-                  </article>
+            <section className="relative min-h-0 flex-1 overflow-hidden rounded-[1.5rem] border border-amber-200/25 bg-[radial-gradient(circle_at_center,rgba(73,125,79,0.86),rgba(29,60,44,0.94)_48%,rgba(23,18,16,0.98)_100%)] p-2 shadow-panel">
+              <div className="pointer-events-none absolute inset-3 rounded-[1.25rem] border border-amber-200/25" />
+              <div className="pointer-events-none absolute inset-8 rounded-full border border-amber-200/10" />
+
+              <div className="absolute left-1/2 top-1/2 z-0 flex h-36 w-36 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-amber-200/35 bg-[radial-gradient(circle,#6b3f1d_0%,#3c2415_58%,#1c1512_100%)] p-2 text-center shadow-[0_24px_80px_rgba(0,0,0,0.45)] sm:h-48 sm:w-48">
+                <div className="rounded-full border border-amber-200/20 bg-black/20 px-3 py-4">
+                  <p className="text-[0.58rem] uppercase tracking-[0.18em] text-amber-300/80">当前行动</p>
+                  <h3 className="mt-1 font-display text-xl leading-none text-amber-50 sm:text-2xl">{activeFaction.name}</h3>
+                  <p className="mt-2 text-xs leading-5 text-amber-100/75">
+                    {activeFaction.reinforcementPending ? "等待分配新增单位" : "本回合可结束"}
+                  </p>
+                  <p className="mt-1 text-[0.68rem] text-amber-100/60">
+                    士兵 {activeFaction.soldiers} / 平民 {activeFaction.civilians}
+                  </p>
                 </div>
+              </div>
 
-                <div className="rounded-[1.75rem] border border-stone-200/80 bg-sand/80 p-4">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div>
-                      <h4 className="font-semibold text-ink">本轮增员</h4>
-                      <p className="mt-1 text-sm text-steel">
-                        总计 {gameState.ruleConfig.economy.reinforcementPerTurn} 单位
-                      </p>
+              {tableSeats.map((seat) => {
+                const faction = gameState.factions.find((item) => item.id === seat.id);
+                if (!faction) {
+                  return null;
+                }
+
+                return (
+                  <div key={seat.id} className={`absolute z-10 ${seat.className}`}>
+                    <div className="mb-1 text-center text-[0.65rem] font-semibold tracking-[0.2em] text-amber-100/65">
+                      {seat.label}
                     </div>
-                    <div className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-steel">
-                      民 {reinforcementCivilians} / 兵{" "}
+                    <StatCard faction={faction} isActive={faction.id === activeFaction.id} />
+                  </div>
+                );
+              })}
+            </section>
+
+            <section className="shrink-0 overflow-hidden rounded-2xl border border-amber-200/25 bg-[linear-gradient(145deg,rgba(248,228,177,0.97),rgba(191,139,69,0.95))] p-2 text-stone-950 shadow-panel">
+              <div className="grid grid-cols-[1fr_auto] gap-2">
+                <div className="min-w-0 rounded-xl border border-amber-950/10 bg-white/35 p-2">
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold">增员</span>
+                    <span className="rounded-full bg-stone-950/10 px-2 py-0.5 text-[0.66rem] font-semibold">
+                      平民 {reinforcementCivilians} / 士兵{" "}
                       {gameState.ruleConfig.economy.reinforcementPerTurn - reinforcementCivilians}
-                    </div>
+                    </span>
                   </div>
                   <input
-                    className="w-full accent-accent"
+                    className="block w-full accent-stone-950"
                     type="range"
                     min={0}
                     max={gameState.ruleConfig.economy.reinforcementPerTurn}
@@ -547,177 +558,195 @@ function App() {
                     onChange={(event) => setReinforcementCivilians(Number(event.target.value))}
                     disabled={!activeFaction.reinforcementPending}
                   />
-                  <button
-                    className="mt-4 w-full rounded-2xl bg-forest px-4 py-3 font-semibold text-white disabled:opacity-40"
-                    onClick={() =>
-                      updateActiveFaction((faction) =>
-                        applyReinforcement(
-                          faction,
-                          gameState.round,
-                          reinforcementCivilians,
-                          gameState.ruleConfig,
-                        ),
-                      )
-                    }
-                    disabled={!activeFaction.reinforcementPending}
-                  >
-                    确认增员
-                  </button>
                 </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    className="rounded-[1.25rem] bg-wine px-4 py-3 text-sm font-semibold text-white shadow-sm"
-                    onClick={() =>
-                      updateActiveFaction((faction) =>
-                        convertCiviliansToSoldiers(faction, gameState.round, gameState.ruleConfig),
-                      )
-                    }
-                  >
-                    民转兵
-                  </button>
-                  <button
-                    className="rounded-[1.25rem] bg-steel px-4 py-3 text-sm font-semibold text-white shadow-sm"
-                    onClick={() =>
-                      updateActiveFaction((faction) =>
-                        convertSoldiersToCivilians(faction, gameState.round, gameState.ruleConfig),
-                      )
-                    }
-                  >
-                    兵转民
-                  </button>
-                  <button
-                    className="rounded-[1.25rem] bg-amber-600 px-4 py-3 text-sm font-semibold text-white shadow-sm"
-                    onClick={() =>
-                      updateActiveFaction((faction) =>
-                        upgradeWeapon(faction, gameState.round, gameState.ruleConfig),
-                      )
-                    }
-                  >
-                    升级武器
-                  </button>
-                  <button
-                    className="rounded-[1.25rem] bg-emerald-700 px-4 py-3 text-sm font-semibold text-white shadow-sm"
-                    onClick={() =>
-                      updateActiveFaction((faction) =>
-                        upgradeArmor(faction, gameState.round, gameState.ruleConfig),
-                      )
-                    }
-                  >
-                    强化盔甲
-                  </button>
-                </div>
-
-                <div className="rounded-[1.75rem] border border-stone-200/80 bg-white/75 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h4 className="font-semibold text-ink">发起进攻</h4>
-                      <p className="mt-1 text-sm text-steel">选择目标阵营与投入兵力</p>
-                    </div>
-                    <span className="rounded-full bg-sand px-3 py-1 text-xs font-semibold text-steel">
-                      上限 {activeFaction.soldiers} 兵
-                    </span>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-3">
-                    <select
-                      className="rounded-2xl border border-stone-200 bg-white px-3 py-3"
-                      value={battleTargetId}
-                      onChange={(event) => setBattleTargetId(Number(event.target.value) as FactionId)}
-                    >
-                      {aliveTargets?.map((faction) => (
-                        <option key={faction.id} value={faction.id}>
-                          {faction.name}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      className="rounded-2xl border border-stone-200 bg-white px-3 py-3"
-                      type="number"
-                      min={1}
-                      max={Math.max(1, activeFaction.soldiers)}
-                      value={battleSoldiers}
-                      onChange={(event) => setBattleSoldiers(Number(event.target.value))}
-                    />
-                  </div>
-                  <button
-                    className="mt-3 w-full rounded-2xl bg-ink px-4 py-3 font-semibold text-white disabled:opacity-40"
-                    onClick={handleBattle}
-                    disabled={!aliveTargets?.length || activeFaction.soldiers <= 0 || !!gameState.winnerId}
-                  >
-                    结算战斗
-                  </button>
-                </div>
-
                 <button
-                  className="w-full rounded-[1.4rem] border border-ink bg-white px-4 py-4 font-semibold text-ink disabled:opacity-40"
+                  className="rounded-xl bg-forest px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+                  onClick={() =>
+                    updateActiveFaction((faction) =>
+                      applyReinforcement(
+                        faction,
+                        gameState.round,
+                        reinforcementCivilians,
+                        gameState.ruleConfig,
+                      ),
+                    )
+                  }
+                  disabled={!activeFaction.reinforcementPending}
+                >
+                  确认
+                </button>
+              </div>
+
+              <div className="mt-2 grid grid-cols-4 gap-1.5">
+                <button
+                  className="min-w-0 rounded-xl bg-wine px-1.5 py-2 text-[0.68rem] font-semibold text-white shadow-sm"
+                  onClick={() =>
+                    updateActiveFaction((faction) =>
+                      convertCiviliansToSoldiers(faction, gameState.round, gameState.ruleConfig),
+                    )
+                  }
+                >
+                  民转兵
+                </button>
+                <button
+                  className="min-w-0 rounded-xl bg-steel px-1.5 py-2 text-[0.68rem] font-semibold text-white shadow-sm"
+                  onClick={() =>
+                    updateActiveFaction((faction) =>
+                      convertSoldiersToCivilians(faction, gameState.round, gameState.ruleConfig),
+                    )
+                  }
+                >
+                  兵转民
+                </button>
+                <button
+                  className="min-w-0 rounded-xl bg-amber-700 px-1.5 py-2 text-[0.68rem] font-semibold text-white shadow-sm"
+                  onClick={() =>
+                    updateActiveFaction((faction) =>
+                      upgradeWeapon(faction, gameState.round, gameState.ruleConfig),
+                    )
+                  }
+                >
+                  升级武器
+                </button>
+                <button
+                  className="min-w-0 rounded-xl bg-emerald-800 px-1.5 py-2 text-[0.68rem] font-semibold text-white shadow-sm"
+                  onClick={() =>
+                    updateActiveFaction((faction) =>
+                      upgradeArmor(faction, gameState.round, gameState.ruleConfig),
+                    )
+                  }
+                >
+                  强化盔甲
+                </button>
+              </div>
+
+              <div className="mt-2 grid grid-cols-[1fr_0.7fr_auto_auto] gap-1.5">
+                <select
+                  className="min-w-0 rounded-xl border border-amber-950/15 bg-white/85 px-2 py-2 text-xs"
+                  value={battleTargetId}
+                  onChange={(event) => setBattleTargetId(Number(event.target.value) as FactionId)}
+                >
+                  {aliveTargets?.map((faction) => (
+                    <option key={faction.id} value={faction.id}>
+                      {faction.name}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  className="min-w-0 rounded-xl border border-amber-950/15 bg-white/85 px-2 py-2 text-xs"
+                  type="number"
+                  min={1}
+                  max={Math.max(1, activeFaction.soldiers)}
+                  value={battleSoldiers}
+                  onChange={(event) => setBattleSoldiers(Number(event.target.value))}
+                />
+                <button
+                  className="rounded-xl bg-stone-950 px-3 py-2 text-xs font-semibold text-amber-50 disabled:opacity-40"
+                  onClick={handleBattle}
+                  disabled={!aliveTargets?.length || activeFaction.soldiers <= 0 || !!gameState.winnerId}
+                >
+                  进攻
+                </button>
+                <button
+                  className="rounded-xl border border-stone-950 bg-white/50 px-3 py-2 text-xs font-semibold text-stone-950 disabled:opacity-40"
                   onClick={handleEndTurn}
                   disabled={!!gameState.winnerId}
                 >
-                  结束当前回合
+                  结束
+                </button>
+              </div>
+
+              <div className="mt-2 grid grid-cols-2 gap-1.5">
+                <button
+                  className="rounded-xl border border-amber-950/15 bg-white/40 px-2 py-1.5 text-xs font-semibold"
+                  onClick={() => setShowFactions(true)}
+                >
+                  阵营详情
+                </button>
+                <button
+                  className="rounded-xl border border-amber-950/15 bg-white/40 px-2 py-1.5 text-xs font-semibold"
+                  onClick={() => setShowLogs(true)}
+                >
+                  战报
                 </button>
               </div>
             </section>
-
-            <section className="rounded-[2rem] bg-white/90 p-4 shadow-panel">
-              <button
-                className="flex w-full items-center justify-between text-left"
-                onClick={() => setShowFactions((value) => !value)}
-              >
-                <h3 className="font-display text-2xl">阵营状态</h3>
-                <span className="text-sm font-semibold text-steel">{showFactions ? "收起" : "展开"}</span>
-              </button>
-              {showFactions && (
-                <div className="mt-4 grid gap-3">
-                  {gameState.factions.map((faction) => (
-                    <StatCard
-                      key={faction.id}
-                      faction={faction}
-                      isActive={faction.id === activeFaction.id}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
-
-            <section className="rounded-[2rem] bg-white/90 p-4 shadow-panel">
-              <button
-                className="flex w-full items-center justify-between text-left"
-                onClick={() => setShowLogs((value) => !value)}
-              >
-                <h3 className="font-display text-2xl">战报</h3>
-                <span className="text-sm font-semibold text-steel">{showLogs ? "收起" : "展开"}</span>
-              </button>
-              {showLogs && (
-                <div className="mt-3 max-h-80 space-y-3 overflow-y-auto pr-1">
-                  {[...gameState.logs].reverse().map((entry) => (
-                    <article key={entry.id} className="rounded-2xl bg-sand p-3 text-sm leading-6">
-                      <div className="mb-1 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-steel">
-                        <span>Round {entry.round}</span>
-                        <span>{entry.factionId ? `Faction ${entry.factionId}` : "System"}</span>
-                      </div>
-                      <p>{entry.message}</p>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </section>
           </section>
         )}
+
       </main>
 
-      {showRules && (
-        <div className="fixed inset-0 z-30 flex items-end bg-ink/50 p-4">
-          <section className="mx-auto w-full max-w-md rounded-[2rem] bg-white p-6 shadow-panel">
-            <div className="flex items-start justify-between gap-4">
+      {showFactions && gameState && activeFaction && (
+        <div className="fixed inset-0 z-30 flex items-end bg-black/65 p-3 backdrop-blur-sm sm:items-center">
+          <section className="mx-auto flex max-h-[88dvh] w-full max-w-2xl flex-col rounded-[1.5rem] border border-amber-200/25 bg-[linear-gradient(145deg,rgba(248,228,177,0.98),rgba(184,130,61,0.96))] p-4 text-stone-950 shadow-panel">
+            <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm uppercase tracking-[0.3em] text-accent">Rules</p>
-                <h2 className="mt-2 font-display text-3xl">规则说明</h2>
+                <p className="text-xs uppercase tracking-[0.24em] text-stone-700">Factions</p>
+                <h2 className="mt-1 font-display text-2xl">阵营详情</h2>
               </div>
-              <button className="rounded-full bg-sand px-3 py-2 text-sm font-semibold" onClick={() => setShowRules(false)}>
+              <button
+                className="rounded-full bg-stone-950 px-3 py-2 text-sm font-semibold text-amber-50"
+                onClick={() => setShowFactions(false)}
+              >
                 关闭
               </button>
             </div>
-            <div className="mt-4 space-y-3 text-sm leading-6 text-steel">
+            <div className="grid min-h-0 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+              {gameState.factions.map((faction) => (
+                <StatCard
+                  key={faction.id}
+                  faction={faction}
+                  isActive={faction.id === activeFaction.id}
+                />
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {showLogs && gameState && (
+        <div className="fixed inset-0 z-30 flex items-end bg-black/65 p-3 backdrop-blur-sm sm:items-center">
+          <section className="mx-auto flex max-h-[88dvh] w-full max-w-2xl flex-col rounded-[1.5rem] border border-amber-200/25 bg-[linear-gradient(145deg,rgba(44,29,18,0.98),rgba(16,13,12,0.98))] p-4 text-amber-50 shadow-panel">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-amber-300/75">Battle Log</p>
+                <h2 className="mt-1 font-display text-2xl">战报</h2>
+              </div>
+              <button
+                className="rounded-full bg-amber-300 px-3 py-2 text-sm font-semibold text-stone-950"
+                onClick={() => setShowLogs(false)}
+              >
+                关闭
+              </button>
+            </div>
+            <div className="min-h-0 space-y-2 overflow-y-auto pr-1">
+              {latestLogs.map((entry) => (
+                <article key={entry.id} className="rounded-2xl border border-amber-200/15 bg-amber-50/10 p-3 text-sm leading-6">
+                  <div className="mb-1 flex items-center justify-between gap-3 text-xs uppercase tracking-[0.18em] text-amber-100/60">
+                    <span>Round {entry.round}</span>
+                    <span>{entry.factionId ? `Faction ${entry.factionId}` : "System"}</span>
+                  </div>
+                  <p>{entry.message}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {showRules && (
+        <div className="fixed inset-0 z-30 flex items-end bg-black/65 p-4 backdrop-blur-sm">
+          <section className="mx-auto w-full max-w-md rounded-[2rem] border border-amber-200/25 bg-[linear-gradient(145deg,rgba(248,228,177,0.98),rgba(184,130,61,0.96))] p-6 text-stone-950 shadow-panel">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-stone-700">Rules</p>
+                <h2 className="mt-2 font-display text-3xl">规则说明</h2>
+              </div>
+              <button className="rounded-full bg-stone-950 px-3 py-2 text-sm font-semibold text-amber-50" onClick={() => setShowRules(false)}>
+                关闭
+              </button>
+            </div>
+            <div className="mt-4 space-y-3 text-sm leading-6 text-stone-700">
               <p>1. 支持 2 到 4 个阵营，本地热座轮流操作。</p>
               <p>2. 每个行动回合开始时，当前阵营先自动结算经济：民产金，兵耗金。</p>
               <p>3. 每轮每个阵营必须先分配新增单位，默认总数为 {ruleConfig.economy.reinforcementPerTurn}。</p>

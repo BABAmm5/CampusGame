@@ -6,48 +6,43 @@ interface StatCardProps {
 }
 
 export function StatCard({ faction, isActive }: StatCardProps) {
+  const stats = [
+    { label: "血量", value: faction.hp },
+    { label: "金币", value: faction.gold },
+    { label: "平民", value: faction.civilians },
+    { label: "士兵", value: faction.soldiers },
+    { label: "武器", value: faction.weaponLevel },
+    { label: "盔甲", value: faction.armor },
+  ];
+
   return (
     <article
-      className={`rounded-3xl border border-white/70 bg-white/85 p-4 shadow-panel transition ${
-        isActive ? "ring-2 ring-accent" : ""
+      className={`relative overflow-hidden rounded-xl border bg-[linear-gradient(145deg,#fff8e9,#d9b777)] px-2.5 py-2 text-ink shadow-panel transition ${
+        isActive ? "border-amber-200 ring-2 ring-amber-300" : "border-amber-950/25"
       } ${!faction.alive ? "opacity-50 grayscale" : ""}`}
     >
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-steel">Faction {faction.id}</p>
-          <h3 className="font-display text-xl">{faction.name}</h3>
+      <div
+        className="absolute inset-x-0 top-0 h-1.5"
+        style={{ backgroundColor: faction.color }}
+        aria-hidden
+      />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.65),transparent_42%),linear-gradient(135deg,rgba(74,35,14,0.08),transparent_40%)]" />
+      <div className="relative mb-1.5 flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[0.55rem] uppercase tracking-[0.16em] text-stone-700">Faction {faction.id}</p>
+          <h3 className="mt-0.5 truncate font-display text-[0.95rem] leading-none">{faction.name}</h3>
         </div>
-        <span
-          className="h-3 w-3 rounded-full"
-          style={{ backgroundColor: faction.color }}
-          aria-hidden
-        />
+        <span className="shrink-0 rounded-full border border-amber-950/20 bg-white/55 px-1.5 py-0.5 text-[0.55rem] font-semibold text-stone-800">
+          {isActive ? "行动中" : faction.alive ? "待命" : "覆灭"}
+        </span>
       </div>
-      <dl className="grid grid-cols-3 gap-3 text-sm">
-        <div>
-          <dt className="text-steel">血量</dt>
-          <dd className="font-semibold">{faction.hp}</dd>
-        </div>
-        <div>
-          <dt className="text-steel">金币</dt>
-          <dd className="font-semibold">{faction.gold}</dd>
-        </div>
-        <div>
-          <dt className="text-steel">民</dt>
-          <dd className="font-semibold">{faction.civilians}</dd>
-        </div>
-        <div>
-          <dt className="text-steel">兵</dt>
-          <dd className="font-semibold">{faction.soldiers}</dd>
-        </div>
-        <div>
-          <dt className="text-steel">武器</dt>
-          <dd className="font-semibold">{faction.weaponLevel}</dd>
-        </div>
-        <div>
-          <dt className="text-steel">盔甲</dt>
-          <dd className="font-semibold">{faction.armor}</dd>
-        </div>
+      <dl className="relative flex flex-wrap gap-1 text-[0.62rem]">
+        {stats.map((stat) => (
+          <div key={stat.label} className="flex items-center gap-1 rounded-full bg-amber-950/10 px-1.5 py-0.5">
+            <dt className="text-stone-700">{stat.label}</dt>
+            <dd className="font-display text-xs font-semibold leading-none">{stat.value}</dd>
+          </div>
+        ))}
       </dl>
     </article>
   );
