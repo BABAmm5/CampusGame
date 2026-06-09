@@ -68,12 +68,20 @@ export function getReviveRestriction(
 }
 
 function revivedFaction(targetId: FactionId, reviverId: FactionId): FactionState {
+  const initial = FACTION_INITIAL_OVERRIDES[targetId];
   return {
+    ...initial,
     id: targetId,
     name: FACTION_META[targetId].name,
     color: FACTION_META[targetId].accent,
-    ...FACTION_INITIAL_OVERRIDES[targetId],
+    maxHp: initial.hp,
+    weaponAttack: targetId === 1 || targetId === 3 ? 2 : 3,
+    weaponFamily: targetId === 1 || targetId === 3 ? "13" : "24",
+    hasDualWeapon: false,
     alive: true,
+    awakened: false,
+    restActive: false,
+    incomeMultiplier: 1,
     reinforcementPending: true,
     attacksThisTurn: 0,
     weaponUpgradedThisTurn: false,
@@ -82,6 +90,7 @@ function revivedFaction(targetId: FactionId, reviverId: FactionId): FactionState
     attackPenaltyPercent: 20,
     revivalTributeTo: reviverId,
     revivalTributeRoundsRemaining: 3,
+    hand: [],
   };
 }
 

@@ -2,14 +2,11 @@ import type { FactionId, InitialFactionStats, RuleConfig } from "./types";
 
 export const FACTION_IDS: FactionId[] = [1, 2, 3, 4];
 
-export const FACTION_META: Record<
-  FactionId,
-  { name: string; color: string; accent: string }
-> = {
+export const FACTION_META: Record<FactionId, { name: string; color: string; accent: string }> = {
   1: { name: "统治者", color: "bg-red-100", accent: "#c2410c" },
   2: { name: "反抗者", color: "bg-sky-100", accent: "#0369a1" },
   3: { name: "守护者", color: "bg-amber-100", accent: "#b45309" },
-  4: { name: "入侵者", color: "bg-emerald-100", accent: "#166534" },
+  4: { name: "游猎者", color: "bg-emerald-100", accent: "#166534" },
 };
 
 export const DEFAULT_INITIAL_FACTION_STATS: InitialFactionStats = {
@@ -61,7 +58,7 @@ export const DEFAULT_RULE_CONFIG: RuleConfig = {
   economy: {
     reinforcementPerTurn: 5,
     civilianGoldOutput: 10,
-    soldierUpkeep: 20,
+    soldierUpkeep: 10,
     convertAmount: 1,
     weaponUpgradeCost: 20,
     maxWeaponLevel: 5,

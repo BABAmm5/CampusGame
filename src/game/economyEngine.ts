@@ -18,13 +18,17 @@ export function applyTurnIncome(
   round: number,
   ruleConfig: RuleConfig,
 ): { faction: FactionState; logs: GameLogEntry[] } {
-  const income = faction.civilians * ruleConfig.economy.civilianGoldOutput;
-  const upkeep = faction.id === 4 ? 0 : faction.soldiers * ruleConfig.economy.soldierUpkeep;
+  const income =
+    faction.civilians * ruleConfig.economy.civilianGoldOutput * Math.max(1, faction.incomeMultiplier || 1);
+  const upkeep =
+    faction.id === 4 || faction.restActive ? 0 : faction.soldiers * ruleConfig.economy.soldierUpkeep;
   const net = income - upkeep;
   const nextGold = Math.max(0, faction.gold + net);
   const nextFaction = {
     ...faction,
     gold: nextGold,
+    restActive: false,
+    incomeMultiplier: 1,
     reinforcementPending: true,
     attacksThisTurn: 0,
     weaponUpgradedThisTurn: false,
@@ -64,9 +68,9 @@ export function exchangeRulerHpForCivilians(
     faction: {
       ...faction,
       hp: faction.hp - 1,
-      civilians: Math.min(100, faction.civilians + 3),
+      civilians: Math.min(100, faction.civilians + 5),
     },
-    logs: [createLog(round, faction.id, `${faction.name} 发动技能：消耗 1 血，获得 3 名平民。`)],
+    logs: [createLog(round, faction.id, `${faction.name} 发动恤民：消耗 1 血，获得 5 名平民。`)],
   };
 }
 
@@ -105,11 +109,14 @@ export function applyReinforcement(
 }
 
 function draftCostForFaction(faction: FactionState, ruleConfig: RuleConfig): number {
+  if (faction.id === 3 && faction.awakened) {
+    return 0;
+  }
   if (faction.id === 1) {
     return ruleConfig.economy.rulerDraftCostPerCivilian;
   }
   if (faction.id === 3) {
-    return ruleConfig.economy.guardianDraftCostPerCivilian;
+    return ruleConfig.economy.rulerDraftCostPerCivilian;
   }
   return 0;
 }

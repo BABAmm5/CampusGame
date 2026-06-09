@@ -1,0 +1,211 @@
+import type { CardDefinition, CardId, CardInstance } from "./types";
+
+export const CARD_DEFINITIONS: Record<CardId, CardDefinition> = {
+  hero_order: {
+    id: "hero_order",
+    name: "英雄令",
+    type: "scheme",
+    description: "向其他非统治者阵营各收 80 金。",
+    count: 1,
+  },
+  recruit_order: {
+    id: "recruit_order",
+    name: "招募令",
+    type: "scheme",
+    description: "向其他非统治者阵营各收 2 民，转为己方士兵。",
+    count: 1,
+  },
+  cease_war: {
+    id: "cease_war",
+    name: "止戈令",
+    type: "scheme",
+    description: "指定阵营 3 个兵变为民。",
+    count: 1,
+  },
+  trade_post: {
+    id: "trade_post",
+    name: "交易台",
+    type: "scheme",
+    description: "支付 100 金，向目标阵营收 1 件武器。",
+    count: 1,
+  },
+  avoid_war: {
+    id: "avoid_war",
+    name: "避战",
+    type: "scheme",
+    description: "自动响应：抵消一次以自己为目标的卡牌或攻击。",
+    count: 2,
+  },
+  gain_civilians: {
+    id: "gain_civilians",
+    name: "增加民",
+    type: "scheme",
+    description: "获得 2 民。",
+    count: 2,
+  },
+  gain_soldiers: {
+    id: "gain_soldiers",
+    name: "增加兵",
+    type: "scheme",
+    description: "获得 2 兵。",
+    count: 2,
+  },
+  heal: {
+    id: "heal",
+    name: "回复血量",
+    type: "scheme",
+    description: "恢复 1 血。",
+    count: 2,
+  },
+  armor: {
+    id: "armor",
+    name: "盔甲",
+    type: "equipment",
+    description: "获得 1 层盔甲，单层减伤 5%，最高 30%。",
+    count: 2,
+  },
+  dual_weapon: {
+    id: "dual_weapon",
+    name: "双武器",
+    type: "equipment",
+    description: "获得双武器状态。",
+    count: 4,
+  },
+  weapon_upgrade: {
+    id: "weapon_upgrade",
+    name: "武器升级",
+    type: "equipment",
+    description: "支付 20 金，武器升 1 级。",
+    count: 12,
+  },
+  attack: {
+    id: "attack",
+    name: "攻击",
+    type: "battle",
+    description: "触发一次对战。",
+    count: 10,
+  },
+  gold: {
+    id: "gold",
+    name: "金币",
+    type: "battle",
+    description: "获得 50 金。",
+    count: 8,
+  },
+  civilian_production: {
+    id: "civilian_production",
+    name: "民生产",
+    type: "battle",
+    description: "下次资源结算民产金翻倍。",
+    count: 4,
+  },
+  rest: {
+    id: "rest",
+    name: "休整",
+    type: "battle",
+    description: "下次行动前不扣兵金，且本回合不能被攻击。",
+    count: 4,
+  },
+  weapon_13_2: {
+    id: "weapon_13_2",
+    name: "13 系武器 2",
+    type: "weapon",
+    description: "统治者/守护者可装备，攻击力 2。",
+    count: 1,
+    weaponAttack: 2,
+    weaponFamily: "13",
+  },
+  weapon_13_4: {
+    id: "weapon_13_4",
+    name: "13 系武器 4",
+    type: "weapon",
+    description: "统治者/守护者可装备，攻击力 4。",
+    count: 1,
+    weaponAttack: 4,
+    weaponFamily: "13",
+  },
+  weapon_13_6: {
+    id: "weapon_13_6",
+    name: "13 系武器 6",
+    type: "weapon",
+    description: "统治者/守护者可装备，攻击力 6。",
+    count: 1,
+    weaponAttack: 6,
+    weaponFamily: "13",
+  },
+  weapon_13_8: {
+    id: "weapon_13_8",
+    name: "13 系武器 8",
+    type: "weapon",
+    description: "统治者/守护者可装备，攻击力 8。",
+    count: 1,
+    weaponAttack: 8,
+    weaponFamily: "13",
+  },
+  weapon_13_10: {
+    id: "weapon_13_10",
+    name: "13 系武器 10",
+    type: "weapon",
+    description: "统治者/守护者可装备，攻击力 10，用后消耗并获得盔甲。",
+    count: 1,
+    weaponAttack: 10,
+    weaponFamily: "13",
+  },
+  weapon_24_3: {
+    id: "weapon_24_3",
+    name: "24 系武器 3",
+    type: "weapon",
+    description: "反抗者/游猎者可装备，攻击力 3。",
+    count: 1,
+    weaponAttack: 3,
+    weaponFamily: "24",
+  },
+  weapon_24_5: {
+    id: "weapon_24_5",
+    name: "24 系武器 5",
+    type: "weapon",
+    description: "反抗者/游猎者可装备，攻击力 5。",
+    count: 1,
+    weaponAttack: 5,
+    weaponFamily: "24",
+  },
+  weapon_24_7: {
+    id: "weapon_24_7",
+    name: "24 系武器 7",
+    type: "weapon",
+    description: "反抗者/游猎者可装备，攻击力 7。",
+    count: 1,
+    weaponAttack: 7,
+    weaponFamily: "24",
+  },
+  weapon_24_8: {
+    id: "weapon_24_8",
+    name: "24 系武器 8",
+    type: "weapon",
+    description: "反抗者/游猎者可装备，攻击力 8。",
+    count: 1,
+    weaponAttack: 8,
+    weaponFamily: "24",
+  },
+  weapon_24_10: {
+    id: "weapon_24_10",
+    name: "24 系武器 10",
+    type: "weapon",
+    description: "反抗者/游猎者可装备，攻击力 10，用后消耗并获得盔甲。",
+    count: 1,
+    weaponAttack: 10,
+    weaponFamily: "24",
+  },
+};
+
+export const MAIN_DECK_CARD_IDS: CardId[] = Object.values(CARD_DEFINITIONS)
+  .filter((card) => card.type !== "weapon")
+  .flatMap((card) => Array.from({ length: card.count }, () => card.id));
+
+export const WEAPON_CARD_IDS: CardId[] = Object.values(CARD_DEFINITIONS)
+  .filter((card) => card.type === "weapon")
+  .flatMap((card) => Array.from({ length: card.count }, () => card.id));
+
+export function cardName(card: CardInstance): string {
+  return CARD_DEFINITIONS[card.cardId].name;
+}

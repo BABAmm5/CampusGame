@@ -7,12 +7,13 @@ interface StatCardProps {
 
 export function StatCard({ faction, isActive }: StatCardProps) {
   const stats = [
-    { label: "血量", value: faction.hp },
+    { label: "血量", value: `${faction.hp}/${faction.maxHp}` },
     { label: "金币", value: faction.gold },
     { label: "平民", value: faction.civilians },
     { label: "士兵", value: faction.soldiers },
-    { label: "武器", value: faction.weaponLevel },
+    { label: "武器", value: faction.weaponAttack },
     { label: "盔甲", value: faction.armor },
+    { label: "手牌", value: faction.hand.length },
   ];
 
   return (
@@ -33,7 +34,7 @@ export function StatCard({ faction, isActive }: StatCardProps) {
           <h3 className="mt-0.5 truncate font-display text-[0.95rem] leading-none">{faction.name}</h3>
         </div>
         <span className="shrink-0 rounded-full border border-amber-950/20 bg-white/55 px-1.5 py-0.5 text-[0.55rem] font-semibold text-stone-800">
-          {isActive ? "行动中" : faction.alive ? "待命" : "覆灭"}
+          {faction.awakened ? "觉醒" : isActive ? "行动中" : faction.alive ? "待命" : "覆灭"}
         </span>
       </div>
       <dl className="relative flex flex-wrap gap-1 text-[0.62rem]">

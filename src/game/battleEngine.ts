@@ -10,6 +10,9 @@ export function getDeploymentLimit(round: number, ruleConfig: RuleConfig): numbe
 }
 
 function weaponAttack(faction: FactionState): number {
+  if (faction.weaponAttack > 0) {
+    return faction.weaponAttack;
+  }
   const rulerGuardian = [2, 4, 6, 8, 10];
   const rebelInvader = [3, 5, 7, 8, 10];
   const table = faction.id === 1 || faction.id === 3 ? rulerGuardian : rebelInvader;
@@ -94,6 +97,9 @@ export function resolveBattle(
   if (attacker.id === 4 && defender.id === 3) {
     attackPower *= 1 + ruleConfig.battle.invaderGuardianBonusPercent / 100;
   }
+  if (defender.id === 3 && defender.gold >= 30 && !defender.awakened) {
+    attackPower -= 5 + weaponAttack(attacker);
+  }
 
   const defensePower = defender.soldiers * defenderUnitPower * 0.25;
   const powerGap = Math.max(0, attackPower - defensePower);
@@ -123,10 +129,12 @@ export function resolveBattle(
     soldiers: Math.max(0, attacker.soldiers - attackerLosses),
     attacksThisTurn: (attacker.attacksThisTurn ?? 0) + 1,
     weaponLevel: weaponConsumed ? 1 : attacker.weaponLevel,
+    weaponAttack: weaponConsumed ? (attacker.weaponFamily === "24" ? 3 : 2) : attacker.weaponAttack,
     armor: weaponConsumed ? Math.min(ruleConfig.economy.maxArmor, attacker.armor + 1) : attacker.armor,
   };
   const nextDefender: FactionState = {
     ...defender,
+    gold: defender.id === 3 && defender.gold >= 30 && !defender.awakened ? defender.gold - 30 : defender.gold,
     soldiers: Math.max(0, defender.soldiers - defenderLosses),
     hp: Math.max(0, defender.hp - damage * ruleConfig.battle.structureFactor),
   };
@@ -162,6 +170,15 @@ export function resolveBattle(
         round,
         attacker.id,
         `${attacker.name} 消耗攻击力 10 的武器，获得 1 套盔甲，武器重置。`,
+      ),
+    );
+  }
+  if (defender.id === 3 && defender.gold >= 30 && !defender.awakened) {
+    logs.push(
+      createLog(
+        round,
+        defender.id,
+        `${defender.name} 发动荫世，支付 30 金借用统治者 1 个单位抵御攻击。`,
       ),
     );
   }

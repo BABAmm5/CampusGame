@@ -1,3 +1,4 @@
+import { applyAwakenings, drawCards } from "./cardEngine";
 import { applyTurnIncome, createLog } from "./economyEngine";
 import { determineWinner } from "./victoryEngine";
 import type { FactionState, GameState, GameLogEntry } from "./types";
@@ -26,11 +27,16 @@ export function nextTurn(state: GameState): GameState {
   const wrapped = candidateIndex <= state.turnIndex;
   const nextRound = wrapped ? state.round + 1 : state.round;
   const activeFaction = state.factions[candidateIndex];
-  const incomeResult = applyTurnIncome(activeFaction, nextRound, state.ruleConfig);
+  const drawResult = drawCards(state.deck, state.discardPile, 4, nextRound, activeFaction.id);
+  const activeWithDrawn = {
+    ...activeFaction,
+    hand: [...activeFaction.hand, ...drawResult.drawn],
+  };
+  const incomeResult = applyTurnIncome(activeWithDrawn, nextRound, state.ruleConfig);
   let updatedFactions = replaceFaction(state.factions, incomeResult.faction);
   const tributeLogs: GameLogEntry[] = [];
 
-  if (incomeResult.faction.id === 3) {
+  if (incomeResult.faction.id === 3 && !incomeResult.faction.awakened) {
     const ruler = updatedFactions.find((faction) => faction.id === 1 && faction.alive);
     const guardian = updatedFactions.find((faction) => faction.id === 3);
     if (ruler && guardian) {
@@ -103,19 +109,27 @@ export function nextTurn(state: GameState): GameState {
       incomeResult.faction.id,
       `${incomeResult.faction.name} 开始行动。`,
     ),
+    createLog(
+      nextRound,
+      incomeResult.faction.id,
+      `${incomeResult.faction.name} 摸 ${drawResult.drawn.length} 张牌。`,
+    ),
   ];
 
   if (wrapped) {
     systemLogs.unshift(createLog(nextRound, null, `第 ${nextRound} 轮开始。`));
   }
 
-  return {
+  return applyAwakenings({
     ...state,
     round: nextRound,
     turnIndex: candidateIndex,
     currentFactionId: incomeResult.faction.id,
+    phase: "action",
     factions: updatedFactions,
+    deck: drawResult.deck,
+    discardPile: drawResult.discardPile,
     winnerId: winner?.id ?? null,
-    logs: [...state.logs, ...systemLogs, ...incomeResult.logs, ...tributeLogs],
-  };
+    logs: [...state.logs, ...systemLogs, ...drawResult.logs, ...incomeResult.logs, ...tributeLogs],
+  });
 }
