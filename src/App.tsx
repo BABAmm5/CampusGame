@@ -7,14 +7,20 @@ import {
   convertCiviliansToSoldiers,
   convertSoldiersToCivilians,
   createLog,
+  exchangeRulerHpForCivilians,
   upgradeArmor,
   upgradeWeapon,
 } from "./game/economyEngine";
 import { initGame } from "./game/initGame";
 import { nextTurn, replaceFaction } from "./game/roundEngine";
-import { resolveBattle } from "./game/battleEngine";
-import { determineWinner, absorbDefeatedFaction } from "./game/victoryEngine";
-import type { FactionId, FactionState, GameState, RuleConfig } from "./game/types";
+import { getDeploymentLimit, resolveBattle } from "./game/battleEngine";
+import {
+  determineWinner,
+  absorbDefeatedFaction,
+  getReviveRestriction,
+  reviveFaction,
+} from "./game/victoryEngine";
+import type { FactionId, FactionState, GameLogEntry, GameState, RuleConfig } from "./game/types";
 
 type Screen = "home" | "setup" | "game";
 
@@ -58,6 +64,11 @@ const ruleSections: Array<{
       { key: "maxWeaponLevel", label: "武器等级上限", min: 1 },
       { key: "armorUpgradeCost", label: "盔甲升级费用", min: 0 },
       { key: "maxArmor", label: "盔甲上限", min: 0 },
+      { key: "rulerDraftCostPerCivilian", label: "统治者民转兵每人费用", min: 0 },
+      { key: "guardianDraftCostPerCivilian", label: "守护者民转兵每人费用", min: 0 },
+      { key: "guardianSoldierToCivilianGold", label: "守护者兵转民每人收益", min: 0 },
+      { key: "guardianTributeCivilians", label: "守护者每轮上交平民", min: 0 },
+      { key: "guardianTributeGold", label: "守护者每轮上交金币", min: 0 },
     ],
   },
   {
@@ -70,6 +81,13 @@ const ruleSections: Array<{
       { key: "structureFactor", label: "城防伤害系数", min: 0, step: 0.1 },
       { key: "retaliationFactor", label: "反击系数", min: 0, step: 0.05 },
       { key: "minimumDamage", label: "最小伤害", min: 0 },
+      { key: "attacksPerTurn", label: "每回合攻击次数", min: 1 },
+      { key: "firstRoundDeployLimit", label: "第一轮上场上限", min: 1 },
+      { key: "deployLimitIncreasePerRound", label: "每轮上场上限增加", min: 0 },
+      { key: "maxDeployUnits", label: "最高上场单位", min: 1 },
+      { key: "actionUnitCost", label: "每次作战消耗士兵", min: 0 },
+      { key: "armorReductionPercent", label: "每套盔甲减伤百分比", min: 0 },
+      { key: "invaderGuardianBonusPercent", label: "入侵者对守护者伤害加成百分比", min: 0 },
     ],
   },
 ];
@@ -85,6 +103,56 @@ const tableSeats: Array<{
   { id: 4, label: "西席", className: "left-2 top-1/2 w-[34%] -translate-y-1/2 sm:w-[24%]" },
 ];
 
+const factionSkillDescriptions: Record<FactionId, string> = {
+  1: "技能：1 血换 3 平民。民转兵每人消耗 10 金币，兵转民无收益。",
+  2: "技能：民兵转换不扣金币，武器攻击力较高。",
+  3: "技能：兵转民获得金币；每轮向统治者上交资源；被击杀后攻击击杀者会受惩罚。",
+  4: "技能：士兵不扣金币；不可拥有平民；攻击守护者有额外伤害。",
+};
+
+function normalizeRuleConfig(ruleConfig: RuleConfig | undefined): RuleConfig {
+  return {
+    initialFactionStats: {
+      ...DEFAULT_RULE_CONFIG.initialFactionStats,
+      ...ruleConfig?.initialFactionStats,
+    },
+    economy: {
+      ...DEFAULT_RULE_CONFIG.economy,
+      ...ruleConfig?.economy,
+    },
+    battle: {
+      ...DEFAULT_RULE_CONFIG.battle,
+      ...ruleConfig?.battle,
+    },
+  };
+}
+
+function normalizeFaction(faction: FactionState): FactionState {
+  return {
+    ...faction,
+    civilians: faction.id === 4 ? 0 : faction.civilians,
+    attacksThisTurn: faction.attacksThisTurn ?? 0,
+    weaponUpgradedThisTurn: faction.weaponUpgradedThisTurn ?? false,
+    defeatedBy: faction.defeatedBy ?? null,
+    attackPenaltyAgainst: faction.attackPenaltyAgainst ?? null,
+    attackPenaltyPercent: faction.attackPenaltyPercent ?? 0,
+    revivalTributeTo: faction.revivalTributeTo ?? null,
+    revivalTributeRoundsRemaining: faction.revivalTributeRoundsRemaining ?? 0,
+  };
+}
+
+function normalizeGameState(state: GameState | null | undefined): GameState | null {
+  if (!state) {
+    return null;
+  }
+  const ruleConfig = normalizeRuleConfig(state.ruleConfig);
+  return {
+    ...state,
+    ruleConfig,
+    factions: state.factions.map(normalizeFaction),
+  };
+}
+
 function readSave(): PersistedData | null {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -97,9 +165,9 @@ function readSave(): PersistedData | null {
     }
     return {
       v: 1,
-      gameState: parsed.gameState,
+      gameState: normalizeGameState(parsed.gameState),
       factionCount: [2, 3, 4].includes(parsed.factionCount) ? parsed.factionCount : initialFactionCount,
-      ruleConfig: parsed.ruleConfig ?? DEFAULT_RULE_CONFIG,
+      ruleConfig: normalizeRuleConfig(parsed.ruleConfig),
     };
   } catch {
     return null;
@@ -120,6 +188,12 @@ function App() {
   const [showRules, setShowRules] = useState(false);
   const [showFactions, setShowFactions] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
+  const [showRevive, setShowRevive] = useState(false);
+  const [lastActionLogs, setLastActionLogs] = useState<GameLogEntry[]>([]);
+
+  const showActionLogs = (logs: GameLogEntry[]) => {
+    setLastActionLogs(logs);
+  };
 
   const updateRuleValue = (
     sectionKey: keyof RuleConfig,
@@ -160,8 +234,16 @@ function App() {
     const firstTarget =
       gameState.factions.find((faction) => faction.alive && faction.id !== activeFaction.id)?.id ??
       activeFaction.id;
+    const nextDeploymentLimit = getDeploymentLimit(gameState.round, gameState.ruleConfig);
+    const nextBattleLimit = Math.max(
+      1,
+      Math.min(
+        nextDeploymentLimit,
+        Math.max(1, activeFaction.soldiers - gameState.ruleConfig.battle.actionUnitCost),
+      ),
+    );
     setBattleTargetId(firstTarget);
-    setBattleSoldiers((current) => Math.max(1, Math.min(current, Math.max(1, activeFaction.soldiers))));
+    setBattleSoldiers((current) => Math.max(1, Math.min(current, nextBattleLimit)));
   }, [gameState, activeFaction]);
 
   const startGame = (nextFactionCount = factionCount, nextRuleConfig = ruleConfig) => {
@@ -203,6 +285,7 @@ function App() {
     const result = updater(activeFaction);
     const updatedFactions = replaceFaction(gameState.factions, result.faction);
     const winner = determineWinner(updatedFactions);
+    showActionLogs(result.logs);
     setGameState({
       ...gameState,
       factions: updatedFactions,
@@ -216,9 +299,35 @@ function App() {
       return;
     }
 
+    if (!aliveTargets?.length) {
+      const warningLog = createLog(gameState.round, activeFaction.id, "当前没有可进攻的敌对阵营。");
+      showActionLogs([warningLog]);
+      setGameState({ ...gameState, logs: [...gameState.logs, warningLog] });
+      return;
+    }
+
+    if (activeAttacksUsed >= gameState.ruleConfig.battle.attacksPerTurn) {
+      const warningLog = createLog(gameState.round, activeFaction.id, `${activeFaction.name} 本回合已经发动过进攻。`);
+      showActionLogs([warningLog]);
+      setGameState({ ...gameState, logs: [...gameState.logs, warningLog] });
+      return;
+    }
+
+    if (activeFaction.soldiers <= gameState.ruleConfig.battle.actionUnitCost) {
+      const warningLog = createLog(
+        gameState.round,
+        activeFaction.id,
+        `${activeFaction.name} 士兵不足，作战至少需要 ${gameState.ruleConfig.battle.actionUnitCost + 1} 名士兵。`,
+      );
+      showActionLogs([warningLog]);
+      setGameState({ ...gameState, logs: [...gameState.logs, warningLog] });
+      return;
+    }
+
     const defender = gameState.factions.find((faction) => faction.id === battleTargetId);
     if (!defender || !defender.alive || defender.id === activeFaction.id) {
       const warningLog = createLog(gameState.round, activeFaction.id, "请选择有效的敌对阵营。");
+      showActionLogs([warningLog]);
       setGameState({ ...gameState, logs: [...gameState.logs, warningLog] });
       return;
     }
@@ -245,12 +354,35 @@ function App() {
     }
 
     const winner = determineWinner(updatedFactions);
+    showActionLogs(extraLogs);
     setGameState({
       ...gameState,
       factions: updatedFactions,
       winnerId: winner?.id ?? null,
       logs: [...gameState.logs, ...extraLogs],
     });
+  };
+
+  const handleReinforcement = () => {
+    if (!gameState || !activeFaction || gameState.winnerId) {
+      return;
+    }
+
+    if (!activeFaction.reinforcementPending) {
+      const infoLog = createLog(gameState.round, activeFaction.id, `${activeFaction.name} 本回合已经完成增员。`);
+      showActionLogs([infoLog]);
+      setGameState({ ...gameState, logs: [...gameState.logs, infoLog] });
+      return;
+    }
+
+    updateActiveFaction((faction) =>
+      applyReinforcement(
+        faction,
+        gameState.round,
+        reinforcementCivilians,
+        gameState.ruleConfig,
+      ),
+    );
   };
 
   const handleEndTurn = () => {
@@ -264,11 +396,47 @@ function App() {
         activeFaction.id,
         `请先分配本轮新增的 ${gameState.ruleConfig.economy.reinforcementPerTurn} 个单位。`,
       );
+      showActionLogs([warningLog]);
       setGameState({ ...gameState, logs: [...gameState.logs, warningLog] });
       return;
     }
 
-    setGameState(nextTurn(gameState));
+    const nextState = nextTurn(gameState);
+    const newLogs = nextState.logs.slice(gameState.logs.length);
+    showActionLogs(newLogs);
+    setGameState(nextState);
+  };
+
+  const handleFactionSkill = () => {
+    if (!gameState || !activeFaction || gameState.winnerId) {
+      return;
+    }
+
+    updateActiveFaction((faction) => exchangeRulerHpForCivilians(faction, gameState.round));
+  };
+
+  const handleRevive = (targetId: FactionId) => {
+    if (!gameState || !activeFaction || gameState.winnerId) {
+      return;
+    }
+
+    const target = gameState.factions.find((faction) => faction.id === targetId);
+    if (!target) {
+      return;
+    }
+
+    const result = reviveFaction(activeFaction, target, gameState.round);
+    let updatedFactions = replaceFaction(gameState.factions, result.reviver);
+    updatedFactions = replaceFaction(updatedFactions, result.revived);
+    const winner = determineWinner(updatedFactions);
+    showActionLogs(result.logs);
+    setShowRevive(false);
+    setGameState({
+      ...gameState,
+      factions: updatedFactions,
+      winnerId: winner?.id ?? null,
+      logs: [...gameState.logs, ...result.logs],
+    });
   };
 
   const handleExportConfig = async () => {
@@ -302,6 +470,12 @@ function App() {
     ? gameState.factions.find((faction) => faction.id === gameState.winnerId)
     : null;
   const latestLogs = gameState ? [...gameState.logs].reverse() : [];
+  const deploymentLimit = gameState ? getDeploymentLimit(gameState.round, gameState.ruleConfig) : 1;
+  const activeBattleLimit = activeFaction && gameState
+    ? Math.max(1, Math.min(deploymentLimit, Math.max(1, activeFaction.soldiers - gameState.ruleConfig.battle.actionUnitCost)))
+    : 1;
+  const activeAttacksUsed = activeFaction?.attacksThisTurn ?? 0;
+  const defeatedFactions = gameState?.factions.filter((faction) => !faction.alive) ?? [];
 
   return (
     <div className="min-h-screen bg-transparent text-amber-50">
@@ -519,6 +693,9 @@ function App() {
                   <p className="mt-1 text-[0.68rem] text-amber-100/60">
                     士兵 {activeFaction.soldiers} / 平民 {activeFaction.civilians}
                   </p>
+                  <p className="mt-1 text-[0.62rem] text-amber-100/55">
+                    攻击 {activeAttacksUsed}/{gameState.ruleConfig.battle.attacksPerTurn} · 上场上限 {deploymentLimit}
+                  </p>
                 </div>
               </div>
 
@@ -561,17 +738,8 @@ function App() {
                 </div>
                 <button
                   className="rounded-xl bg-forest px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
-                  onClick={() =>
-                    updateActiveFaction((faction) =>
-                      applyReinforcement(
-                        faction,
-                        gameState.round,
-                        reinforcementCivilians,
-                        gameState.ruleConfig,
-                      ),
-                    )
-                  }
-                  disabled={!activeFaction.reinforcementPending}
+                  onClick={handleReinforcement}
+                  disabled={!!gameState.winnerId}
                 >
                   确认
                 </button>
@@ -636,14 +804,14 @@ function App() {
                   className="min-w-0 rounded-xl border border-amber-950/15 bg-white/85 px-2 py-2 text-xs"
                   type="number"
                   min={1}
-                  max={Math.max(1, activeFaction.soldiers)}
+                  max={activeBattleLimit}
                   value={battleSoldiers}
                   onChange={(event) => setBattleSoldiers(Number(event.target.value))}
                 />
                 <button
                   className="rounded-xl bg-stone-950 px-3 py-2 text-xs font-semibold text-amber-50 disabled:opacity-40"
                   onClick={handleBattle}
-                  disabled={!aliveTargets?.length || activeFaction.soldiers <= 0 || !!gameState.winnerId}
+                  disabled={!!gameState.winnerId}
                 >
                   进攻
                 </button>
@@ -656,7 +824,19 @@ function App() {
                 </button>
               </div>
 
-              <div className="mt-2 grid grid-cols-2 gap-1.5">
+              <div className="mt-2 grid grid-cols-4 gap-1.5">
+                <button
+                  className="rounded-xl border border-amber-950/15 bg-white/40 px-2 py-1.5 text-xs font-semibold"
+                  onClick={handleFactionSkill}
+                >
+                  阵营技能
+                </button>
+                <button
+                  className="rounded-xl border border-amber-950/15 bg-white/40 px-2 py-1.5 text-xs font-semibold"
+                  onClick={() => setShowRevive(true)}
+                >
+                  契约/复活
+                </button>
                 <button
                   className="rounded-xl border border-amber-950/15 bg-white/40 px-2 py-1.5 text-xs font-semibold"
                   onClick={() => setShowFactions(true)}
@@ -692,13 +872,113 @@ function App() {
               </button>
             </div>
             <div className="grid min-h-0 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
-              {gameState.factions.map((faction) => (
-                <StatCard
-                  key={faction.id}
-                  faction={faction}
-                  isActive={faction.id === activeFaction.id}
-                />
+              {gameState.factions.map((faction) => {
+                const penaltyTarget = faction.attackPenaltyAgainst
+                  ? gameState.factions.find((item) => item.id === faction.attackPenaltyAgainst)
+                  : null;
+                const tributeTarget = faction.revivalTributeTo
+                  ? gameState.factions.find((item) => item.id === faction.revivalTributeTo)
+                  : null;
+
+                return (
+                  <article key={faction.id} className="space-y-2">
+                    <StatCard faction={faction} isActive={faction.id === activeFaction.id} />
+                    <div className="rounded-2xl border border-amber-950/10 bg-white/45 p-3 text-xs leading-5 text-stone-700">
+                      <p>{factionSkillDescriptions[faction.id]}</p>
+                      {penaltyTarget && faction.attackPenaltyPercent > 0 && (
+                        <p className="mt-1 font-semibold text-wine">
+                          攻击 {penaltyTarget.name} 时攻击力减少 {faction.attackPenaltyPercent}%。
+                        </p>
+                      )}
+                      {tributeTarget && (
+                        <p className="mt-1 font-semibold text-stone-900">
+                          复活契约：向 {tributeTarget.name} 上交 30% 金币，剩余{" "}
+                          {faction.revivalTributeRoundsRemaining} 轮。
+                        </p>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {lastActionLogs.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/70 p-3 backdrop-blur-sm sm:items-center">
+          <section className="mx-auto flex max-h-[76dvh] w-full max-w-lg flex-col rounded-[1.5rem] border border-amber-200/30 bg-[linear-gradient(145deg,rgba(44,29,18,0.98),rgba(16,13,12,0.98))] p-4 text-amber-50 shadow-panel">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-amber-300/75">Action</p>
+                <h2 className="mt-1 font-display text-2xl">本次操作</h2>
+              </div>
+              <button
+                className="rounded-full bg-amber-300 px-3 py-2 text-sm font-semibold text-stone-950"
+                onClick={() => setLastActionLogs([])}
+              >
+                知道了
+              </button>
+            </div>
+            <div className="min-h-0 space-y-2 overflow-y-auto pr-1">
+              {lastActionLogs.map((entry) => (
+                <article key={entry.id} className="rounded-2xl border border-amber-200/15 bg-amber-50/10 p-3 text-sm leading-6">
+                  <div className="mb-1 flex items-center justify-between gap-3 text-xs uppercase tracking-[0.18em] text-amber-100/60">
+                    <span>Round {entry.round}</span>
+                    <span>{entry.factionId ? `Faction ${entry.factionId}` : "System"}</span>
+                  </div>
+                  <p>{entry.message}</p>
+                </article>
               ))}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {showRevive && gameState && activeFaction && (
+        <div className="fixed inset-0 z-40 flex items-end bg-black/65 p-3 backdrop-blur-sm sm:items-center">
+          <section className="mx-auto flex max-h-[84dvh] w-full max-w-lg flex-col rounded-[1.5rem] border border-amber-200/25 bg-[linear-gradient(145deg,rgba(248,228,177,0.98),rgba(184,130,61,0.96))] p-4 text-stone-950 shadow-panel">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-stone-700">Contract</p>
+                <h2 className="mt-1 font-display text-2xl">契约/复活</h2>
+              </div>
+              <button
+                className="rounded-full bg-stone-950 px-3 py-2 text-sm font-semibold text-amber-50"
+                onClick={() => setShowRevive(false)}
+              >
+                关闭
+              </button>
+            </div>
+            <div className="min-h-0 space-y-2 overflow-y-auto pr-1">
+              {defeatedFactions.length === 0 && (
+                <div className="rounded-2xl border border-amber-950/10 bg-white/45 p-4 text-sm leading-6 text-stone-700">
+                  暂无可复活阵营。阵营覆灭后会出现在这里。
+                </div>
+              )}
+              {defeatedFactions.map((faction) => {
+                const restriction = getReviveRestriction(activeFaction, faction);
+
+                return (
+                  <article key={faction.id} className="rounded-2xl border border-amber-950/10 bg-white/50 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="truncate text-sm font-bold">{faction.name}</h3>
+                        <p className={`mt-1 text-xs leading-5 ${restriction ? "text-wine" : "text-stone-700"}`}>
+                          {restriction ?? "可复活：复活者支付 30% 资产，对方签订 3 轮金币契约。"}
+                        </p>
+                      </div>
+                      <button
+                        className="shrink-0 rounded-xl bg-stone-950 px-3 py-2 text-xs font-semibold text-amber-50 disabled:opacity-40"
+                        onClick={() => handleRevive(faction.id)}
+                        disabled={!!gameState.winnerId}
+                      >
+                        复活
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </section>
         </div>
@@ -748,13 +1028,17 @@ function App() {
             </div>
             <div className="mt-4 space-y-3 text-sm leading-6 text-stone-700">
               <p>1. 支持 2 到 4 个阵营，本地热座轮流操作。</p>
-              <p>2. 每个行动回合开始时，当前阵营先自动结算经济：民产金，兵耗金。</p>
-              <p>3. 每轮每个阵营必须先分配新增单位，默认总数为 {ruleConfig.economy.reinforcementPerTurn}。</p>
-              <p>4. 可执行民转兵、兵转民、武器升级、盔甲强化、主动进攻。</p>
-              <p>5. 武器提高攻击，盔甲降低受到的伤害与反击损耗。</p>
-              <p>6. 敌方血量归零后阵营死亡，资产由进攻方继承，最后存活者获胜。</p>
-              <p>7. 设置页可直接修改规则参数，也可导出为配置码分享，导入后再开新局。</p>
-              <p>8. 游戏会自动保存到浏览器 localStorage，可在首页继续。</p>
+              <p>2. 每个行动回合开始时结算经济：平民产金，士兵扣金；入侵者士兵不扣金。</p>
+              <p>3. 每轮新增 {ruleConfig.economy.reinforcementPerTurn} 个单位；入侵者不可拥有平民，新增平民会转为士兵。</p>
+              <p>4. 第一轮最多上场 {ruleConfig.battle.firstRoundDeployLimit} 名士兵，后续每轮增加 {ruleConfig.battle.deployLimitIncreasePerRound}，最高 {ruleConfig.battle.maxDeployUnits}。</p>
+              <p>5. 每个阵营每回合最多进攻 {ruleConfig.battle.attacksPerTurn} 次，每次作战固定消耗 {ruleConfig.battle.actionUnitCost} 名士兵。</p>
+              <p>6. 武器每回合最多升级一次；盔甲按每套 {ruleConfig.battle.armorReductionPercent}% 减伤，最高 30%。</p>
+              <p>7. 敌方血量归零后阵营覆灭，击杀方获得 50% 金币和全部平民，不继承士兵、武器、盔甲。</p>
+              <p>8. 阵营可通过契约复活部分覆灭阵营；统治者不可复活反抗者或入侵者，守护者不可复活入侵者，统治者不可被复活。</p>
+              <p>9. 复活后向复活者上交 30% 金币 3 轮，攻击复活者时攻击力减少 20%。</p>
+              <p>10. 仅存统治者和守护者时统治者胜；仅存反抗者和守护者时反抗者胜；守护者和入侵者需消灭所有其他阵营。</p>
+              <p>11. 每次点击操作都会弹出本次战报，说明执行结果或失败原因。</p>
+              <p>12. 设置页可修改规则参数，游戏会自动保存到浏览器 localStorage。</p>
             </div>
           </section>
         </div>

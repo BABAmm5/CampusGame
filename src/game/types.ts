@@ -20,6 +20,11 @@ export interface RuleConfig {
     maxWeaponLevel: number;
     armorUpgradeCost: number;
     maxArmor: number;
+    rulerDraftCostPerCivilian: number;
+    guardianDraftCostPerCivilian: number;
+    guardianSoldierToCivilianGold: number;
+    guardianTributeCivilians: number;
+    guardianTributeGold: number;
   };
   battle: {
     baseAttack: number;
@@ -28,6 +33,13 @@ export interface RuleConfig {
     structureFactor: number;
     retaliationFactor: number;
     minimumDamage: number;
+    attacksPerTurn: number;
+    firstRoundDeployLimit: number;
+    deployLimitIncreasePerRound: number;
+    maxDeployUnits: number;
+    actionUnitCost: number;
+    armorReductionPercent: number;
+    invaderGuardianBonusPercent: number;
   };
 }
 
@@ -43,6 +55,13 @@ export interface FactionState {
   armor: number;
   alive: boolean;
   reinforcementPending: boolean;
+  attacksThisTurn: number;
+  weaponUpgradedThisTurn: boolean;
+  defeatedBy: FactionId | null;
+  attackPenaltyAgainst: FactionId | null;
+  attackPenaltyPercent: number;
+  revivalTributeTo: FactionId | null;
+  revivalTributeRoundsRemaining: number;
 }
 
 export interface BattleResolution {
@@ -53,6 +72,7 @@ export interface BattleResolution {
   defenderLosses: number;
   structureDamage: number;
   defenderDefeated: boolean;
+  prevented: boolean;
 }
 
 export interface GameLogEntry {

@@ -19,6 +19,13 @@ export function initGame(
     ...FACTION_INITIAL_OVERRIDES[id],
     alive: true,
     reinforcementPending: true,
+    attacksThisTurn: 0,
+    weaponUpgradedThisTurn: false,
+    defeatedBy: null,
+    attackPenaltyAgainst: null,
+    attackPenaltyPercent: 0,
+    revivalTributeTo: null,
+    revivalTributeRoundsRemaining: 0,
   }));
   const openingFaction = baseFactions[0];
   const openingIncome = applyTurnIncome(openingFaction, 1, ruleConfig);
