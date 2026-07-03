@@ -1,12 +1,12 @@
 import type { FactionId } from "../game/types";
-import rulerEmblem from "../assets/factions/ruler.png";
-import rebelEmblem from "../assets/factions/rebel.png";
-import guardianEmblem from "../assets/factions/guardian.png";
-import hunterEmblem from "../assets/factions/hunter.png";
-import twilightEmblem from "../assets/factions/twilight.png";
-import recruitEmblem from "../assets/factions/recruit.png";
-import curtainEmblem from "../assets/factions/curtain.png";
-import graveEmblem from "../assets/factions/grave.png";
+import rulerEmblem from "../assets/factions/ruler.webp";
+import rebelEmblem from "../assets/factions/rebel.webp";
+import guardianEmblem from "../assets/factions/guardian.webp";
+import hunterEmblem from "../assets/factions/hunter.webp";
+import twilightEmblem from "../assets/factions/twilight.webp";
+import recruitEmblem from "../assets/factions/recruit.webp";
+import curtainEmblem from "../assets/factions/curtain.webp";
+import graveEmblem from "../assets/factions/grave.webp";
 
 export const FACTION_COLOR_MAP: Record<FactionId, { accent: string; glow: string; bg: string; gemColor: string }> = {
   1: { accent: "#c2410c", glow: "rgba(194,65,12,0.5)", bg: "from-red-900/40 to-red-950/60", gemColor: "red" },
