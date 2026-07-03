@@ -18,10 +18,25 @@ export function applyTurnIncome(
   round: number,
   ruleConfig: RuleConfig,
 ): { faction: FactionState; logs: GameLogEntry[] } {
+  // 附属阵营未加入时不产出收入
+  if (!faction.subFactionJoined) {
+    return { faction, logs: [] };
+  }
+  // 墓怨者无金币来源（靠战斗获得）
+  if (faction.id === 8) {
+    const nextFaction = {
+      ...faction, restActive: false, incomeMultiplier: 1,
+      reinforcementPending: true, attacksThisTurn: 0, weaponUpgradedThisTurn: false,
+    };
+    return { faction: nextFaction, logs: [createLog(round, faction.id, `${faction.name} 进入行动阶段。`)] };
+  }
+  // 幕读者：所属阵营民产金+25%
+  const civilianBonus = faction.id === 7 ? 1.25 : 1;
   const income =
-    faction.civilians * ruleConfig.economy.civilianGoldOutput * Math.max(1, faction.incomeMultiplier || 1);
+    faction.civilians * ruleConfig.economy.civilianGoldOutput * Math.max(1, faction.incomeMultiplier || 1) * civilianBonus;
+  // 游猎者和墓怨者自给不扣军费；附属阵营无兵（游猎者属附属时或自己有兵时另计）
   const upkeep =
-    faction.id === 4 || faction.restActive ? 0 : faction.soldiers * ruleConfig.economy.soldierUpkeep;
+    faction.id === 4 || (faction.id as number) === 8 || faction.restActive ? 0 : faction.soldiers * ruleConfig.economy.soldierUpkeep;
   const net = income - upkeep;
   const nextGold = Math.max(0, faction.gold + net);
   const nextFaction = {
@@ -40,7 +55,7 @@ export function applyTurnIncome(
       createLog(
         round,
         faction.id,
-        `${faction.name} 征收 ${income} 金，维持军费 ${upkeep} 金，净变动 ${net >= 0 ? "+" : ""}${net}。`,
+        `${faction.name} 征收 ${Math.floor(income)} 金，维持军费 ${upkeep} 金，净变动 ${net >= 0 ? "+" : ""}${Math.floor(net)}。`,
       ),
     ],
   };
@@ -57,10 +72,10 @@ export function exchangeRulerHpForCivilians(
     };
   }
 
-  if (faction.hp <= 1) {
+  if (faction.hp <= 5) {
     return {
       faction,
-      logs: [createLog(round, faction.id, `${faction.name} 血量不足，无法用 1 血换 3 平民。`)],
+      logs: [createLog(round, faction.id, `${faction.name} 血量低于5，无法发动恤民。`)],
     };
   }
 
@@ -68,9 +83,9 @@ export function exchangeRulerHpForCivilians(
     faction: {
       ...faction,
       hp: faction.hp - 1,
-      civilians: Math.min(100, faction.civilians + 5),
+      civilians: Math.min(100, faction.civilians + 2),
     },
-    logs: [createLog(round, faction.id, `${faction.name} 发动恤民：消耗 1 血，获得 5 名平民。`)],
+    logs: [createLog(round, faction.id, `${faction.name} 发动恤民：消耗 1 血，获得 2 名平民。`)],
   };
 }
 
@@ -80,6 +95,10 @@ export function applyReinforcement(
   civilianCount: number,
   ruleConfig: RuleConfig,
 ): { faction: FactionState; logs: GameLogEntry[] } {
+  // 附属阵营不可增员（特殊单位由所属阵营承担）
+  if (faction.id >= 5) {
+    return { faction, logs: [createLog(round, faction.id, `${faction.name} 为附属阵营，不可自行增员。`)] };
+  }
   const safeCivilianCount = Math.max(
     0,
     Math.min(civilianCount, ruleConfig.economy.reinforcementPerTurn),

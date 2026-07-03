@@ -1,4 +1,8 @@
-export type FactionId = 1 | 2 | 3 | 4;
+// 1-4: 主阵营; 5: 暮光者; 6: 募道者; 7: 幕读者; 8: 墓怨者
+export type FactionId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+export type MainFactionId = 1 | 2 | 3 | 4;
+export type SubFactionId = 5 | 6 | 7;
+export type NeutralFactionId = 8;
 export type TurnPhase = "draw" | "action" | "discard";
 export type CardType = "scheme" | "equipment" | "battle" | "weapon";
 export type CardId =
@@ -96,6 +100,12 @@ export interface FactionState {
   gold: number;
   civilians: number;
   soldiers: number;
+  // 附属阵营特殊单位
+  flags: number;       // 暮光者：旗
+  stockpile: number;  // 募道者：仓
+  scholars: number;   // 幕读者：士
+  retainers: number;  // 墓怨者：侍 (count)
+  retainerLevel: number; // 墓怨者：侍等级
   weaponLevel: number;
   weaponAttack: number;
   weaponFamily: "13" | "24";
@@ -113,6 +123,16 @@ export interface FactionState {
   attackPenaltyPercent: number;
   revivalTributeTo: FactionId | null;
   revivalTributeRoundsRemaining: number;
+  // 归属主阵营（附属阵营专用）
+  ownerFactionId: MainFactionId | null;
+  // 标记系统
+  marksWar: number;    // 战（暮光者归属标记）
+  marksSeal: number;   // 封（募道者归属标记）
+  marksTalent: number; // 才（幕读者归属标记）
+  marksPatience: number; // 忍（守护者金免触发）
+  // 附属阵营特殊状态
+  subFactionJoined: boolean; // 是否已加入游戏
+  tributeRoundsActive: number; // 万邦朝剩余轮数
   hand: CardInstance[];
 }
 
@@ -147,4 +167,9 @@ export interface GameState {
   deck: CardInstance[];
   discardPile: CardInstance[];
   logs: GameLogEntry[];
+  // 全局标记持有情况（factionId -> count）
+  warMarks: Record<number, number>;
+  sealMarks: Record<number, number>;
+  talentMarks: Record<number, number>;
+  patienceMarks: Record<number, number>;
 }

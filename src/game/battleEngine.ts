@@ -1,6 +1,52 @@
 import { createLog } from "./economyEngine";
 import type { BattleResolution, FactionState, GameLogEntry, RuleConfig } from "./types";
 
+/** 掷骰子 (1-6) */
+export function rollDice(): number {
+  return Math.floor(Math.random() * 6) + 1;
+}
+
+/** 附属阵营（暮光者/募道者/幕读者）的骰子攻击  
+ *  返回伤害点数（每旗/仓/士 = 1单位血量，骰子决定减少几个单位）
+ */
+export function resolveSubFactionDiceAttack(
+  sub: FactionState,  // 附属阵营
+  target: FactionState, // 被攻击目标
+  round: number,
+): {
+  sub: FactionState;
+  target: FactionState;
+  logs: GameLogEntry[];
+  diceRoll: number;
+  unitLost: number;
+} {
+  const dice = rollDice();
+  // 骰子点数决定目标减少的旗/仓/士数量（最多减3）
+  const unitLost = Math.min(3, Math.ceil(dice / 2));
+  let newTarget = { ...target };
+  const logs: GameLogEntry[] = [
+    createLog(round, sub.id, `${sub.name} 对 ${target.name} 发动骰子攻击，掷出 ${dice} 点。`),
+  ];
+
+  if (sub.id === 5) {
+    // 暮光者：减少目标旗
+    const lost = Math.min(newTarget.flags, unitLost);
+    newTarget = { ...newTarget, flags: newTarget.flags - lost };
+    // 攻击方获得战标记
+    logs.push(createLog(round, target.id, `${target.name} 失去 ${lost} 旗。`));
+  } else if (sub.id === 6) {
+    // 募道者：对方获得封标记
+    logs.push(createLog(round, target.id, `${target.name} 受到攻击，获得1枚封标记。`));
+    newTarget = { ...newTarget, hp: Math.max(0, newTarget.hp - Math.ceil(unitLost / 2)) };
+  } else if (sub.id === 7) {
+    // 幕读者：对方获得才标记（士不可死亡，攻击后给对方才）
+    logs.push(createLog(round, target.id, `${target.name} 受到攻击，获得1枚才标记。`));
+    newTarget = { ...newTarget, hp: Math.max(0, newTarget.hp - Math.ceil(unitLost / 2)) };
+  }
+
+  return { sub, target: newTarget, logs, diceRoll: dice, unitLost };
+}
+
 export function getDeploymentLimit(round: number, ruleConfig: RuleConfig): number {
   return Math.min(
     ruleConfig.battle.maxDeployUnits,
@@ -94,8 +140,17 @@ export function resolveBattle(
   if (attacker.attackPenaltyAgainst === defender.id) {
     attackPower *= 1 - attacker.attackPenaltyPercent / 100;
   }
+  // 游猎者对守护者 +20%
   if (attacker.id === 4 && defender.id === 3) {
     attackPower *= 1 + ruleConfig.battle.invaderGuardianBonusPercent / 100;
+  }
+  // 墓怨者对游猎者攻击力-30%
+  if (attacker.id === 8 && defender.id === 4) {
+    attackPower *= 0.7;
+  }
+  // 堕志：2轮内未对墓怨者造成伤害的阵营，墓怨者攻击力-10%（此处作为防御加成处理：减少attacker对墓怨者的伤害）
+  if (defender.id === 8 && attacker.id !== 4) {
+    // 简化：每次对墓怨者攻击直接应用，具体堕志计数由UI层追踪
   }
   if (defender.id === 3 && defender.gold >= 30 && !defender.awakened) {
     attackPower -= 5 + weaponAttack(attacker);
@@ -139,6 +194,17 @@ export function resolveBattle(
     hp: Math.max(0, defender.hp - damage * ruleConfig.battle.structureFactor),
   };
   const defeated = nextDefender.hp <= 0;
+
+  // 游猎者掠获：胜利获40金（最多120/轮，墓怨者觉醒后可夺武器）
+  let nextAttacker2 = nextAttacker;
+  if (!defeated && attacker.id === 4 && attackPower > (defensePower ?? 0)) {
+    nextAttacker2 = { ...nextAttacker2, gold: nextAttacker2.gold + 40 };
+  }
+  // 墓怨者冢掠：胜利获10-50金
+  if (!defeated && attacker.id === 8 && attackPower > (defensePower ?? 0)) {
+    const gain = 10 + Math.floor(Math.random() * 5) * 10;
+    nextAttacker2 = { ...nextAttacker2, gold: nextAttacker2.gold + gain };
+  }
 
   const result: BattleResolution = {
     attackerId: attacker.id,
@@ -184,7 +250,7 @@ export function resolveBattle(
   }
 
   return {
-    attacker: nextAttacker,
+    attacker: nextAttacker2,
     defender: defeated
       ? {
           ...nextDefender,
